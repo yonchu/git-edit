@@ -13,19 +13,54 @@ if [ "$(git rev-parse --is-inside-work-tree 2> /dev/null)" != "true" ]; then
     return
 fi
 
+local curcontext="$curcontext" state line expl
+typeset -A opt_args
+
+_arguments -C \
+  ':command:->command' \
+  '*::options:->options'
+
+case $state in
+    (command)
+        ;;
+    (options)
+        case $line[1] in
+            (*)
+                local commit_hash=$(echo "$line[1]" | sed 's/\\//g')
+                if ! $(git rev-parse -q --verify "$commit_hash" > /dev/null 2>&1); then
+                    commit_hash=
+                fi
+                ;;
+        esac
+        ;;
+esac
+
+
 __modified_files() {
-    # TODO git status --porcelain is better
-    #git status -s | egrep -v '^(.D|D.|DD)' | cut -b 4- | sed 's/.* -> //' | grep -v '\\/$' | uniq
-    git status -s | cut -b 4- | sed 's/.* -> //' | grep -v '\\/$' | uniq
+    if [ -z "$1" ]; then
+        #git status --porcelain | egrep -v '^(.D|D.|DD)' | cut -b 4- | sed 's/.* -> //' | grep -v '\\/$' | uniq
+        git status --porcelain | cut -b 4- | sed 's/.* -> //' | grep -v '/$' | uniq
+    else
+        git diff "$1^..$1" --name-status 2> /dev/null | cut -b 3- | sed 's/.* -> //' | grep -v '/$' | uniq
+    fi
 }
 
 local -a files
-files=(${(f)"$(__modified_files)"})
+files=(${(f)"$(__modified_files "$commit_hash")"})
 
 local -a edit_files
 editing_files=()
 
+cdup_path=$(git rev-parse --show-cdup)
+prefix=$(git rev-parse --show-prefix)
+
 for file in "${files[@]}"; do
+    file=$(echo "$file" | sed -e 's/^"//' -e 's/"$//')
+    if echo "$file" | grep -q "^$prefix"; then
+        file=${file#$prefix}
+    else
+        file="$cdup_path$file"
+    fi
     if [ -f "$file" ]; then
         editing_files+=("$file")
     fi
@@ -36,5 +71,8 @@ if [ ${#editing_files[@]} -lt 1 ]; then
     return
 fi
 
-_describe -t modified_files 'Modified Files' editing_files && return 0
+if [ -n "$commit_hash" ]; then
+    commit_hash="($commit_hash=$(git rev-parse --revs-only $commit_hash))"
+fi
+_describe -t modified_files "Modified Files${commit_hash}" editing_files && return 0
 

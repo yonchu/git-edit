@@ -28,11 +28,14 @@ $ exec zsh
 ## Usage
 
 ```shell
-$ git edit [file ...]
+$ git edit [commit] [file ...]
 ```
-No argument : Edit all modified and untracked files.
+- No argument : Edit all modified and untracked files.
 
-Specify files : Edit specified files.(Also specify wildcard like `git edit *.txt`.
+- [commit] : Specify commit object.(e.g. HEAD, hash value)
+
+- [file ...] : Specify files which want to Edit.(Also can specify wildcard like `git edit *.txt`.
+
 
 If you uses zsh, you can use completion.
 
@@ -40,6 +43,10 @@ If you uses zsh, you can use completion.
 $ git edit <TAB>
 Modified Files
 xxxx.txt    yyyy.sh    zzzz.c
+
+$ git edit HEAD <TAB>
+Modified Files(HEAD=62c91ef1f56d89b3328fa4aeae4bb52b579ad679)
+aaaa.txt    bbbb.sh    cccc.c
 ```
 Go in a git repository and test it!
 

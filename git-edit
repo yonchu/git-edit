@@ -1,13 +1,15 @@
 #!/bin/bash
 #
-#  git edit [file ...]
+#  git edit [commit] [file ...]
 #
 #    変更のあったファイル(modified or untracked)を編集する
 #
-#      引数なし : 変更のあったファイルすべてを編集
+#      引数なし   : 未コミットの変更有ファイルすべてを編集
 #
-#      引数あり : 指定したファイルを編集
-#                 (複数指定, ワイルドカードによるパス名展開可)
+#      [commit]   : 任意のコミットオブジェクトを指定 (e.g. HEAD, hash value)
+#
+#      [file ...] : 指定したファイルを編集
+#                   (複数指定, ワイルドカードによるパス名展開可)
 #
 
 if ! type git > /dev/null 2>&1; then
@@ -20,33 +22,56 @@ if [ "$(git rev-parse --is-inside-work-tree 2> /dev/null)" != "true" ]; then
     exit 1
 fi
 
+if $(git rev-parse -q --verify "$1" > /dev/null 2>&1); then
+    commit_hash=$1
+    shift
+fi
+
 modified_files() {
-    # TODO git status --porcelain is better
-    #git status -s | egrep -v '^(.D|D.|DD)' | cut -b 4- | sed 's/.* -> //' | grep -v '\\/$' | uniq
-    git status -s | cut -b 4- | sed 's/.* -> //' | grep -v '\\/$' | uniq
+    if [ -z "$1" ]; then
+        #git status -s | egrep -v '^(.D|D.|DD)' | cut -b 4- | sed 's/.* -> //' | grep -v '/$' | uniq
+        git status --porcelain | cut -b 4- | sed 's/.* -> //' | grep -v '/$' | uniq
+    else
+        git diff "$1^..$1" --name-status  2> /dev/null | cut -b 3- | sed 's/.* -> //' | grep -v '/$' | uniq
+    fi
 }
 
-IFS=$'\n' files=($(modified_files))
+IFS=$'\n' files=($(modified_files "$commit_hash"))
+
+if [ ${#files[@]} -lt 1 ]; then
+    echo 'No modified files'
+    exit
+fi
+
 
 editing_files=()
 
+cdup_path=$(git rev-parse --show-cdup)
+
 if [ $# -lt 1 ]; then
     for file in "${files[@]}"; do
+        file=$(echo "$file" | sed -e 's/^"//' -e 's/"$//')
+        file="$cdup_path$file"
         if [ -f "$file" ]; then
             editing_files+=("$file")
         fi
     done
     if [ ${#editing_files[@]} -lt 1 ]; then
-        echo 'No modified file'
+        echo 'No matched file in modified files'
         exit
     fi
     exec ${GIT_EDITOR:-${EDITOR:-vi}} "${editing_files[@]}"
     exit
 fi
 
+toplevel_path=$(git rev-parse --show-toplevel)
+
 for arg in "$@"; do
+    arg=$(cd "$(dirname "$arg")" && pwd)/$(basename "$arg")
     [ -f "$arg" ] || break
     for file in "${files[@]}"; do
+        file=$(echo "$file" | sed -e 's/^"//' -e 's/"$//')
+        file="$toplevel_path/$file"
         if [ -f "$file" -a "$arg" = "$file" ]; then
             editing_files+=("$arg")
             break
@@ -55,7 +80,7 @@ for arg in "$@"; do
 done
 
 if [ ${#editing_files[@]} -lt 1 ]; then
-    echo 'No modified file'
+    echo 'No matched file in modified files'
     exit
 fi
 

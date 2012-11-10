@@ -46,7 +46,6 @@ if [ ${#files[@]} -lt 1 ]; then
 fi
 
 editing_files=()
-deleted_files=()
 
 cdup_path=$(git rev-parse --show-cdup)
 
@@ -55,8 +54,6 @@ if [ $# -lt 1 ]; then
         file="$cdup_path$(echo "$file" | sed 's/^"\(.*\)"$/\1/')"
         if [ -f "$file" ]; then
             editing_files+=("$file")
-        else
-            deleted_files+=("$file")
         fi
     done
     if [ ${#editing_files[@]} -lt 1 ]; then
@@ -77,8 +74,6 @@ for arg in "$@"; do
         if [ "$arg" = "$file" ]; then
             if [ -f "$file" ]; then
                 editing_files+=("$file")
-            else
-                deleted_files+=("$file")
             fi
             break
         fi

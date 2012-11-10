@@ -41,12 +41,17 @@ If you uses zsh, you can use completion.
 
 ```shell
 $ git edit <TAB>
-Modified Files
+Editable Files
 xxxx.txt    yyyy.sh    zzzz.c
+Deleted Files
+hoge.txt
 
 $ git edit HEAD <TAB>
-Modified Files(HEAD=62c91ef1f56d89b3328fa4aeae4bb52b579ad679)
+Commit Hash:62c91ef1f56d89b3328fa4aeae4bb52b579ad679
+Editable Files
 aaaa.txt    bbbb.sh    cccc.c
+Deleted Files
+fuga.txt
 ```
 Go in a git repository and test it!
 

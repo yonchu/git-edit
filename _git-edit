@@ -5,11 +5,12 @@
 
 __modified_files() {
     if [ -z "$1" ]; then
-        #git status --porcelain | egrep -v '^(.D|D.|DD)' | cut -b 4- | sed 's/.* -> //' | uniq
-        git status --porcelain | cut -b 4- | sed 's/.* -> //' | uniq
+        git status --porcelain | cut -b 4- | sed 's/\(.*\) -> \(.*\)/\1\
+\2/' | uniq
     else
         #git diff "$1^..$1" --name-status 2> /dev/null | cut -b 3- | sed 's/.* -> //' | uniq
-        git log --pretty=oneline --name-status -n 1 "$1" 2> /dev/null | sed '1d' | cut -b 3- | sed 's/.* -> //' | uniq
+        git log --pretty=oneline --name-only -n 1 "$1" 2> /dev/null | sed '1d' | sed 's/\(.*\) -> \(.*\)/\1\
+\2/' | uniq
     fi
 }
 

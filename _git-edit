@@ -3,7 +3,6 @@
 # git-edit zsh completion function
 #
 
-
 __modified_files() {
     if [ -z "$1" ]; then
         #git status --porcelain | egrep -v '^(.D|D.|DD)' | cut -b 4- | sed 's/.* -> //' | grep -v '\\/$' | uniq
@@ -14,84 +13,86 @@ __modified_files() {
     fi
 }
 
-#### Main ####
-
-if ! type git > /dev/null 2>&1; then
-    _message 'Git is not installed'
-    return
-fi
-
-if [ "$(git rev-parse --is-inside-work-tree 2> /dev/null)" != "true" ]; then
-    _message 'Not a git repository'
-    return
-fi
-
-local curcontext=$curcontext state line expl
-typeset -A opt_args
-
-_arguments -C \
-  ':command:->command' \
-  '*::options:->options'
-
-case $state in
-    (command)
-        ;;
-    (options)
-        case $line[1] in
-            (*)
-                local commit_hash=$(echo "$line[1]" | sed 's/\\//g')
-                local commit_hash_full
-                if $(git rev-parse -q --verify "$commit_hash" > /dev/null 2>&1); then
-                    commit_hash_full=$(git rev-parse --revs-only "$commit_hash")
-                else
-                    commit_hash=
-                fi
-                _message "Commit Hash:$commit_hash_full"
-                ;;
-        esac
-        ;;
-esac
-
-local -a files
-files=(${(f)"$(__modified_files "$commit_hash")"})
-if [ ${#files[@]} -lt 1 ]; then
-    _message "No modified file"
-    return
-fi
-
-local -a editing_files
-editing_files=()
-
-local -a deleted_files
-deleted_files=()
-
-cdup_path=$(git rev-parse --show-cdup)
-prefix=$(git rev-parse --show-prefix)
-
-for file in "${files[@]}"; do
-    file=$(echo "$file" | sed 's/^"\(.*\)"$/\1/')
-    if echo "$file" | grep -q "^$prefix"; then
-        file=${file#$prefix}
-    else
-        file="$cdup_path$file"
+_git-edit() {
+    if ! type git > /dev/null 2>&1; then
+        _message 'Git is not installed'
+        return
     fi
-    if [ -f "$file" ]; then
-        editing_files+=("$file")
-    else
-        deleted_files+=("$file")
+
+    if [ "$(git rev-parse --is-inside-work-tree 2> /dev/null)" != "true" ]; then
+        _message 'Not a git repository'
+        return
     fi
-done
 
-if [ ${#editing_files[@]} -lt 1 -a ${#deleted_files[@]} -lt 1 ]; then
-    _message "No modified file$detail_commit_hash"
+    local curcontext=$curcontext state line expl
+    typeset -A opt_args
+
+    _arguments -C \
+        ':command:->command' \
+        '*::options:->options'
+
+    case $state in
+        (command)
+            ;;
+        (options)
+            case $line[1] in
+                (*)
+                    local commit_hash=$(echo "$line[1]" | sed 's/\\//g')
+                    local commit_hash_full
+                    if $(git rev-parse -q --verify "$commit_hash" > /dev/null 2>&1); then
+                        commit_hash_full=$(git rev-parse --revs-only "$commit_hash")
+                    else
+                        commit_hash=
+                    fi
+                    _message "Commit Hash:$commit_hash_full"
+                    ;;
+            esac
+            ;;
+    esac
+
+    local -a files
+    files=(${(f)"$(__modified_files "$commit_hash")"})
+    if [ ${#files[@]} -lt 1 ]; then
+        _message "No modified file"
+        return
+    fi
+
+    local -a editing_files
+    editing_files=()
+
+    local -a deleted_files
+    deleted_files=()
+
+    cdup_path=$(git rev-parse --show-cdup)
+    prefix=$(git rev-parse --show-prefix)
+
+    for file in "${files[@]}"; do
+        file=$(echo "$file" | sed 's/^"\(.*\)"$/\1/')
+        if echo "$file" | grep -q "^$prefix"; then
+            file=${file#$prefix}
+        else
+            file="$cdup_path$file"
+        fi
+        if [ -f "$file" ]; then
+            editing_files+=("$file")
+        else
+            deleted_files+=("$file")
+        fi
+    done
+
+    if [ ${#editing_files[@]} -lt 1 -a ${#deleted_files[@]} -lt 1 ]; then
+        _message "No modified file$detail_commit_hash"
+        return
+    fi
+
+    if [ ${#editing_files[@]} -ge 1 ]; then
+        _describe -t editable_files "Editable Files${detail_commit_hash}" editing_files
+    fi
+
+    if [ ${#deleted_files[@]} -ge 1 ]; then
+        _describe -t deleted_files "Deleteded Files${detail_commit_hash}" deleted_files
+    fi
     return
-fi
+}
 
-if [ ${#editing_files[@]} -ge 1 ]; then
-    _describe -t editable_files "Editable Files${detail_commit_hash}" editing_files
-fi
-
-if [ ${#deleted_files[@]} -ge 1 ]; then
-    _describe -t deleted_files "Deleteded Files${detail_commit_hash}" deleted_files
-fi
-return
+_git-edit "$@"

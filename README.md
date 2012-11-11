@@ -61,4 +61,5 @@ Go in a git repository and test it!
 See also
 ---------------
 
-* [よんちゅBlog](http://yonchu.hatenablog.com/)
+日本語マニュアル:
+[git-editというgitサブコマンドを作った - よんちゅBlog](http://yonchu.hatenablog.com/entry/2012/11/11/035105)

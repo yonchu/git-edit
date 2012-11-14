@@ -45,7 +45,7 @@ _git-edit() {
                     else
                         commit_hash=
                     fi
-                    _message "Commit Hash:$commit_hash_full"
+                    _message "commit hash:$commit_hash_full"
                     ;;
             esac
             ;;
@@ -87,11 +87,11 @@ _git-edit() {
     fi
 
     if [ ${#editing_files[@]} -ge 1 ]; then
-        _describe -t editable_files "Editable Files${detail_commit_hash}" editing_files
+        _describe -t editable_files "editable file${detail_commit_hash}" editing_files
     fi
 
     if [ ${#deleted_files[@]} -ge 1 ]; then
-        _describe -t deleted_files "Deleteded Files${detail_commit_hash}" deleted_files
+        _describe -t deleted_files "deleteded file${detail_commit_hash}" deleted_files
     fi
     return
 }

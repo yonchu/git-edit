@@ -6,13 +6,13 @@
 
 Clone `git-edit` from github.
 
-```shell
+```sh
 $ git clone git://github.com/yonchu/git-edit.git
 ```
 
 Put `git-edit` file to PATH directory (like ~/bin).
 
-```shell
+```sh
 $ cd git-edit
 $ cp git-edit ~/bin
 $ chmod +x ~/bin/git-edit
@@ -20,26 +20,26 @@ $ chmod +x ~/bin/git-edit
 
 If you uses zsh, put `_git-edit` file to zsh functions directory (like /usr/share/zsh/site-functions/ or /usr/local/share/zsh/site-functions/).
 
-```shell
+```sh
 $ cp _git-edit /usr/local/share/zsh/site-functions/
 $ exec zsh
 ```
 
 ## Usage
 
-```shell
+```sh
 $ git edit [commit] [file ...]
 ```
 - No argument : Edit all modified and untracked files.
 
 - [commit] : Specify commit object.(e.g. HEAD, hash value)
 
-- [file ...] : Specify files which want to Edit.(Also can specify wildcard like `git edit *.txt`.
+- [file ...] : Specify files which want to Edit. (Allow to specify wildcard like `git edit *.txt`)
 
 
 If you uses zsh, you can use completion.
 
-```shell
+```sh
 $ git edit <TAB>
 Editable Files
 xxxx.txt    yyyy.sh    zzzz.c

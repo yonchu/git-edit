@@ -1,89 +1,147 @@
 #!/bin/bash
+# -----------------------------------------------------------------------------
 #
-#  git edit [commit] [file ...]
+#  git-edit
 #
-#    変更のあったファイル(modified or untracked)を編集する
+#  Git subcommand to edit modified and untracked files with zsh completion.
 #
-#      引数なし   : 未コミットの変更有ファイルすべてを編集
+# -----------------------------------------------------------------------------
 #
-#      [commit]   : 任意のコミットオブジェクトを指定 (e.g. HEAD, hash value)
+#  Version     : 0.1.0
+#  Author      : Yonchu <yuyuchu3333@gmail.com>
+#  License     : MIT License
+#  Repository  : https://github.com/yonchu/git-edit
+#  Last Change : 27 Jul 2013.
 #
-#      [file ...] : 指定したファイルを編集
-#                   (複数指定, ワイルドカードによるパス名展開可)
+#  Copyright (c) 2013 Yonchu.
 #
+# -----------------------------------------------------------------------------
+#
+# Usage:
+#
+#  $ git edit [commit] [file ...]
+#
+#      No argument : Edit all modified and untracked files.
+#
+#      [commit]    : Specify commit object.(e.g. HEAD, Hash value, etc)
+#
+#      [file ...]  : Specify files which want to edit.
+#                    Allow to specify wildcard like `git edit *.txt`.
+#
+# -----------------------------------------------------------------------------
 
-modified_files() {
-    if [ -z "$1" ]; then
-        git status --porcelain | cut -b 4- | sed 's/.* -> //' | uniq
-    else
-        #git diff "$1^..$1" --name-only  2> /dev/null | sed 's/.* -> //' | uniq
-        git log --oneline --name-only -n 1 "$1" 2> /dev/null | sed '1d' | sed 's/.* -> //' | uniq
+### Helper functions ###
+
+check_before_running() {
+    if ! type git > /dev/null 2>&1; then
+        echo 'Git is not installed.' 2>&1
+        return 1
+    fi
+    if [[ $(git rev-parse --is-inside-work-tree 2> /dev/null) != 'true' ]]; then
+        echo 'Not a git repository.' 2>&1
+        return 1
     fi
 }
 
+modified_files() {
+    local file files
+    if [[ -z $1 ]]; then
+        files=$(git status --porcelain | cut -b 4- | sed 's/.* -> //' | uniq)
+    else
+        #git diff "$1^..$1" --name-only  2> /dev/null | sed 's/.* -> //' | uniq
+        files=$(git log --oneline --name-only -n 1 "$1" 2> /dev/null | sed '1d' | sed 's/.* -> //' | uniq)
+    fi
+    for file in "${files[@]}"; do
+        echo "$file" | sed 's/^"\(.*\)"$/\1/'
+    done
+}
+
+edit_all() {
+    local commit_id="$1"
+    local -a files
+
+    ## Get modified files.
+    IFS=$'\n' files=($(modified_files "$commit_id"))
+    if [[ ${#files[@]} -lt 1 ]]; then
+        echo 'No modified files' 1>&2
+        return 1
+    fi
+
+    ## Get editable files.
+    local cdup_path
+    local -a editable_files
+    cdup_path=$(git rev-parse --show-cdup)
+    editable_files=()
+    for file in "${files[@]}"; do
+        file="$cdup_path$file"
+        if [[ -f $file ]]; then
+            editable_files+=("$file")
+        fi
+    done
+    ## Edit.
+    edit "${editable_files[@]}"
+}
+
+edit_specified_files() {
+    local commit_id="$1"; shift
+    local -a files
+
+    ## Get modified files.
+    IFS=$'\n' files=($(modified_files "$commit_id"))
+    if [[ ${#files[@]} -lt 1 ]]; then
+        echo 'No modified files' 1>&2
+        return 1
+    fi
+
+    ## Get editable files.
+    local target
+    local toplevel_path
+    toplevel_path=$(git rev-parse --show-toplevel)
+    for target in "$@"; do
+        [[ -f $target ]] || continue
+        target=$(fullpath "$target")
+        for file in "${files[@]}"; do
+            file="$toplevel_path/$file"
+            if [[ $target == $file ]]; then
+                if [[ -f $file ]]; then
+                    editable_files+=("$file")
+                fi
+                break
+            fi
+        done
+    done
+    ## Edit.
+    edit "${editable_files[@]}"
+}
+
+edit() {
+    if [[ $# -eq 0 ]]; then
+        echo 'No editables file.' 1>&2
+        return 1
+    fi
+    exec ${GIT_EDITOR:-${EDITOR:-vi}} "$@"
+}
+
+fullpath() {
+    echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
+}
+
+
 #### Main ####
 
-if ! type git > /dev/null 2>&1; then
-    echo 'Git is not installed.' 2>&1
-    exit 1
+if ! check_before_running; then
+    exit
 fi
 
-if [ "$(git rev-parse --is-inside-work-tree 2> /dev/null)" != "true" ]; then
-    echo 'Not a git repository.' 2>&1
-    exit 1
-fi
-
-commit_hash=
+## Get commit id.
+commit_id=
 if $(git rev-parse -q --verify "$1" > /dev/null 2>&1); then
-    commit_hash=$1
-    shift
+    commit_id=$1; shift
 fi
 
-IFS=$'\n' files=($(modified_files "$commit_hash"))
-if [ ${#files[@]} -lt 1 ]; then
-    echo 'No modified files'
-    exit
+## Edit.
+if [[ $# -eq 0 ]]; then
+    edit_all "$commit_id"
+else
+    edit_specified_files "$commit_id" "$@"
 fi
-
-editing_files=()
-
-cdup_path=$(git rev-parse --show-cdup)
-
-if [ $# -lt 1 ]; then
-    for file in "${files[@]}"; do
-        file="$cdup_path$(echo "$file" | sed 's/^"\(.*\)"$/\1/')"
-        if [ -f "$file" ]; then
-            editing_files+=("$file")
-        fi
-    done
-    if [ ${#editing_files[@]} -lt 1 ]; then
-        echo 'No editable file in modified files'
-        exit
-    fi
-    exec ${GIT_EDITOR:-${EDITOR:-vi}} "${editing_files[@]}"
-    exit
-fi
-
-toplevel_path=$(git rev-parse --show-toplevel)
-
-for arg in "$@"; do
-    [ -f "$arg" ] || break
-    arg="$(cd "$(dirname "$arg")" && pwd)/$(basename "$arg")"
-    for file in "${files[@]}"; do
-        file="$toplevel_path/$(echo "$file" | sed 's/^"\(.*\)"$/\1/')"
-        if [ "$arg" = "$file" ]; then
-            if [ -f "$file" ]; then
-                editing_files+=("$file")
-            fi
-            break
-        fi
-    done
-done
-
-if [ ${#editing_files[@]} -lt 1 ]; then
-    echo 'No editable file in modified files'
-    exit
-fi
-
-exec ${GIT_EDITOR:-${EDITOR:-vi}} "${editing_files[@]}"
-

@@ -11,7 +11,7 @@
 #  Author      : Yonchu <yuyuchu3333@gmail.com>
 #  License     : MIT License
 #  Repository  : https://github.com/yonchu/git-edit
-#  Last Change : 27 Jul 2013.
+#  Last Change : 31 Jul 2013.
 #
 #  Copyright (c) 2013 Yonchu.
 #
@@ -57,11 +57,14 @@ modified_files() {
 }
 
 edit_all() {
-    local commit_id="$1"
+    local commit_id="$1" IFS_SAVE
     local -a files
 
     ## Get modified files.
-    IFS=$'\n' files=($(modified_files "$commit_id"))
+    IFS_SAVE=$IFS
+    IFS=$'\n'
+    files=($(modified_files "$commit_id"))
+    IFS=$IFS_SAVE
     if [[ ${#files[@]} -lt 1 ]]; then
         echo 'No modified files' 1>&2
         return 1
@@ -84,10 +87,14 @@ edit_all() {
 
 edit_specified_files() {
     local commit_id="$1"; shift
+    local IFS_SAVE
     local -a files
 
     ## Get modified files.
-    IFS=$'\n' files=($(modified_files "$commit_id"))
+    IFS_SAVE=$IFS
+    IFS=$'\n'
+    files=($(modified_files "$commit_id"))
+    IFS=$IFS_SAVE
     if [[ ${#files[@]} -lt 1 ]]; then
         echo 'No modified files' 1>&2
         return 1
